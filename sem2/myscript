@@ -1,0 +1,5 @@
+#!/bin/bash
+
+for ((var = 1; var <= 30000; var++)); do
+	./pid
+done
