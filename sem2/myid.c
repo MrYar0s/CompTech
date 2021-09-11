@@ -7,24 +7,14 @@
 
 #define BIGNUMBER 1000000;
 
-void inf_all(void);
-void inf_user(char const *);
-
-int main(int argc, char const *argv[])
+struct _process
 {
-	if(argc == 2)
-	{
-		inf_user(argv[1]);
-	}
-	else if(argc == 1)
-	{
-		inf_all();
-	} else
-		printf("Error input");
-	printf("\n");
-	return 0;
-}
+	long int id;
+	char* name;
+};
 
+typedef struct _process process;
+/*
 void inf_user(char const * name)
 {
 	struct passwd* password;
@@ -44,22 +34,68 @@ void inf_user(char const * name)
 	else
 		printf("id: '%s': no such user", name);
 }
+*/
 
-void inf_all(void)
+process* inf_all(int* elems)
 {
+	gid_t* grouplist = (gid_t*)malloc(1024);
+	int numofgroups = getgroups(1024, grouplist);
+	process* list = (process*)calloc(numofgroups + 3, sizeof(process));
+	struct passwd* pwd;
+	pwd = getpwuid(getuid());
+	list[0].id = (long int)pwd->pw_uid;
+	list[0].name = pwd->pw_name;
+	pwd = getpwuid(getgid());
+	list[1].id = (long int)pwd->pw_gid;
+	list[1].name = pwd->pw_name;
 	struct group* gr;
-	gid_t* grouplist;
-	uid_t userid = getuid();
-	uid_t groupid = getgid();
-	grouplist = (gid_t*)malloc(32);
-	int numofgroups = getgroups(32, grouplist);
-	gr = getgrgid(grouplist[numofgroups - 1]);
-	printf("uid=%d(%s) ", (int)userid, getpwuid(userid)->pw_name);
-	printf("gid=%d(%s) ", (int)groupid, gr->gr_name);
-	printf("groups=%d(%s)", (int)gr->gr_gid, gr->gr_name);
+	gr = getgrgid(grouplist[numofgroups-1]);
+	list[2].id = (long int)gr->gr_gid;
+	list[2].name = gr->gr_name;
 	for(int i = 0; i < numofgroups - 1; i++)
 	{
 		gr = getgrgid(grouplist[i]);
-		printf(",%d(%s)", gr->gr_gid,gr->gr_name);
+		list[i+3].id = gr->gr_gid;
+		list[i+3].name = gr->gr_name;
 	}
+	printf("####%s####",list[2].name);
+	*elems = numofgroups + 2;
+	return list;
+}
+
+void print(process* output, int status, int elems)
+{
+	switch(status)
+	{
+		case 1: printf("uid=%ld(%s) ", output[0].id, output[0].name);
+				printf("gid=%ld(%s) ", output[1].id, output[1].name);
+				printf("groups=%ld(%s)", output[2].id, output[2].name);
+				for(int i = 3; i < elems + 1; i++)
+				{
+					printf(",%ld(%s)", output[i].id, output[i].name);
+				}
+				break;
+		case 2:
+				break;
+		default: printf("Something went wrong");
+				break;
+	}
+	printf("\n");
+}
+
+int main(int argc, char const *argv[])
+{
+	process* output;
+	int elems = 0;
+	switch(argc)
+	{
+		case 1: output = inf_all(&elems);
+				break;
+		case 2:// inf_user(argv[1]);
+				break;
+		default: printf("Please input only one parameter");
+				break;
+	}
+	print(output, argc, elems);
+	return 0;
 }
