@@ -4,98 +4,129 @@
 #include <sys/types.h>
 #include <grp.h>
 #include <pwd.h>
+#include <assert.h>
 
-#define BIGNUMBER 1000000;
+#define BIGNUMBER 1000
 
-struct _process
+struct process
 {
-	long int id;
-	char* name;
+	long int proc_id;
+	long int group_id;
+	gid_t* grouplist;
+	int ngroups;
+	char* proc_name;
+	char* group_name;
 };
 
-typedef struct _process process;
-/*
-void inf_user(char const * name)
+int process_init(struct process* user)
 {
-	struct passwd* password;
-	gid_t* groups = (gid_t*)malloc(32);
-	int numofgroups = BIGNUMBER;
-	if(password = getpwnam(name))
+	user = (struct process*)calloc(1, sizeof(struct process));
+	user->proc_name = (char*)calloc(16, sizeof(char));
+	if(!user->proc_name)
 	{
-		printf("uid=%d(%s) ", (int)password->pw_uid, password->pw_name);
-		printf("gid=%d(%s) ", (int)password->pw_gid, password->pw_name);
-		printf("groups=%d(%s)", (int)password->pw_gid, password->pw_name);
-		numofgroups = getgrouplist(name, password->pw_gid, groups, &numofgroups);
-		for(int i = 1; i < numofgroups; i++)
-		{
-			printf(",%d(%s)", groups[i], getgrgid(groups[i])->gr_name);
-		}
+		printf("Unsuccesful calloc for process name");
+		return -1;
 	}
-	else
-		printf("id: '%s': no such user", name);
-}
-*/
-
-process* inf_all(int* elems)
-{
-	gid_t* grouplist = (gid_t*)malloc(1024);
-	int numofgroups = getgroups(1024, grouplist);
-	process* list = (process*)calloc(numofgroups + 3, sizeof(process));
-	struct passwd* pwd;
-	pwd = getpwuid(getuid());
-	list[0].id = (long int)pwd->pw_uid;
-	list[0].name = pwd->pw_name;
-	pwd = getpwuid(getgid());
-	list[1].id = (long int)pwd->pw_gid;
-	list[1].name = pwd->pw_name;
-	struct group* gr;
-	gr = getgrgid(grouplist[numofgroups-1]);
-	list[2].id = (long int)gr->gr_gid;
-	list[2].name = gr->gr_name;
-	for(int i = 0; i < numofgroups - 1; i++)
+	user->group_name = (char*)calloc(16, sizeof(char));
+	if(!user->group_name)
 	{
-		gr = getgrgid(grouplist[i]);
-		list[i+3].id = gr->gr_gid;
-		list[i+3].name = gr->gr_name;
+		printf("Unsuccesful calloc for group name");
+		return -2;
 	}
-	printf("####%s####",list[2].name);
-	*elems = numofgroups + 2;
-	return list;
+	user->grouplist = (gid_t*)calloc(32, sizeof(gid_t));
+	if(!user->grouplist)
+	{
+		printf("Unsuccesful calloc for grouplist");
+		return -3;
+	}
+	user->ngroups = 0;
+	return 0;
 }
 
-void print(process* output, int status, int elems)
+void print_proc(struct process* user)
 {
-	switch(status)
+	printf("proc_id = %ld\nuser_id = %ld\n", user->proc_id, user->group_id);
+	for(int i = 0; i < 5; i++)
 	{
-		case 1: printf("uid=%ld(%s) ", output[0].id, output[0].name);
-				printf("gid=%ld(%s) ", output[1].id, output[1].name);
-				printf("groups=%ld(%s)", output[2].id, output[2].name);
-				for(int i = 3; i < elems + 1; i++)
-				{
-					printf(",%ld(%s)", output[i].id, output[i].name);
-				}
-				break;
-		case 2:
-				break;
-		default: printf("Something went wrong");
-				break;
+		printf("gr_id[%d] = %ld\n", i, (long int)user->grouplist[i]);
+	}
+	printf("ngroups = %d\nproc_name = %s\ngroup_name = %s\n", user->ngroups, user->proc_name, user->group_name);
+}
+
+int set_user(struct process* user, struct passwd* pwd)
+{
+	user->proc_id = (long int)pwd->pw_uid;
+	user->proc_name = pwd->pw_name;
+	user->group_id = (long int)pwd->pw_gid;
+	user->group_name = getgrgid(pwd->pw_gid)->gr_name;
+	user->ngroups = BIGNUMBER;
+	return 0;
+}
+
+int process_info(struct process* user, const char* name)
+{
+	struct passwd* pwd = getpwnam(name);
+	if(!pwd)
+	{
+		printf("id: '%s': no such user\n", name);
+		return -1;
+	}
+	set_user(user, pwd);
+	user->ngroups = getgrouplist(user->proc_name, user->group_id,
+								 user->grouplist, &(user->ngroups));
+	return 0;
+}
+
+int all_info(struct process* user)
+{
+	struct passwd* pwd = getpwuid(getuid());
+	set_user(user, pwd);
+	user->ngroups = getgroups(BIGNUMBER, user->grouplist);
+	return 0;
+}
+
+void print_all(struct process* user)
+{
+	printf("uid=%ld(%s) ", user->proc_id, user->proc_name);
+	printf("gid=%ld(%s) ", user->group_id, user->group_name);
+	printf("groups=%ld(%s)", (long int)user->grouplist[user->ngroups - 1],
+							  getgrgid(user->grouplist[user->ngroups - 1])->gr_name);
+	for(int i = 0; i < user->ngroups - 1; i++)
+	{
+		printf(",%ld(%s)", (long int)user->grouplist[i],
+							getgrgid(user->grouplist[i])->gr_name);
+	}
+	printf("\n");
+}
+
+void print_process(struct process* user)
+{
+	printf("uid=%ld(%s) ", user->proc_id, user->proc_name);
+	printf("gid=%ld(%s) ", user->group_id, user->group_name);
+	printf("groups=%ld(%s)", (long int)user->grouplist[0],
+							  getgrgid(user->grouplist[0])->gr_name);
+	for(int i = 1; i < user->ngroups; i++)
+	{
+		printf(",%ld(%s)", (long int)user->grouplist[i],
+							getgrgid(user->grouplist[i])->gr_name);
 	}
 	printf("\n");
 }
 
 int main(int argc, char const *argv[])
 {
-	process* output;
-	int elems = 0;
+	struct process user;
+	process_init(&user);
 	switch(argc)
 	{
-		case 1: output = inf_all(&elems);
+		case 1: if(!all_info(&user))
+					print_all(&user);
 				break;
-		case 2:// inf_user(argv[1]);
+		case 2: if(!process_info(&user, argv[1]))
+					print_process(&user);
 				break;
 		default: printf("Please input only one parameter");
 				break;
 	}
-	print(output, argc, elems);
 	return 0;
 }
