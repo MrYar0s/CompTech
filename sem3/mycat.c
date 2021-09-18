@@ -35,7 +35,7 @@ int mywrite(const int fd, char* buffer, int read_size)
 		buffer += write_size;
 		//num of symbols that we have in the output
 		output_size += write_size;
-	} while(read_size - left_size != 0);
+	} while(read_size - output_size != 0);
 	return 0;
 }
 
@@ -43,12 +43,13 @@ int mywrite(const int fd, char* buffer, int read_size)
 //fd - file descriptor
 int cat(const int fd)
 {
+	//read_size - num of chars that we succesfully read
+	ssize_t read_size = 0;
 	do
 	{
 		//buffer - array of chars that we have read from fd
 		char buffer[MAX_SIZE];
-		//read_size - num of chars that we succesfully read
-		ssize_t read_size = read(fd, buffer, MAX_SIZE);
+		read_size = read(fd, buffer, MAX_SIZE);
 		//Read check
 		if(read_size < 0)
 		{
