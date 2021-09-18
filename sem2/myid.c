@@ -25,19 +25,19 @@ int process_init(struct process* user)
 	if(!user->proc_name)
 	{
 		printf("Unsuccesful calloc for process name");
-		return -1;
+		return 1;
 	}
 	user->group_name = (char*)calloc(16, sizeof(char));
 	if(!user->group_name)
 	{
 		printf("Unsuccesful calloc for group name");
-		return -2;
+		return 2;
 	}
 	user->grouplist = (gid_t*)calloc(32, sizeof(gid_t));
 	if(!user->grouplist)
 	{
 		printf("Unsuccesful calloc for grouplist");
-		return -3;
+		return 3;
 	}
 	user->ngroups = 0;
 	return 0;
@@ -69,7 +69,7 @@ int process_info(struct process* user, const char* name)
 	if(!pwd)
 	{
 		printf("id: '%s': no such user\n", name);
-		return -1;
+		return 1;
 	}
 	set_user(user, pwd);
 	user->ngroups = getgrouplist(user->proc_name, user->group_id,
@@ -116,7 +116,8 @@ void print_process(struct process* user)
 int main(int argc, char const *argv[])
 {
 	struct process user;
-	process_init(&user);
+	if(process_init(&user))
+		return 1;
 	switch(argc)
 	{
 		case 1: if(!all_info(&user))
