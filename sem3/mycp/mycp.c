@@ -1,21 +1,32 @@
+    //////////////////////////////////
+   //            MY CP             //
+  //          VERSION 1.0         //
+ //         Made By MrYar0s      //
+//////////////////////////////////
 #include <getopt.h>
 #include <errno.h>
 
+//at this .h file defined functions
+//like mywrite and myread;
+//included other .h files
 #include "../mycat/mycat.h"
 
+//params for flag
+//0001
 #define I_OPT 1
+//0010
 #define F_OPT 2
+//0100
 #define V_OPT 4
 
-#define FILES_MODE 1
-#define DIR_MODE 2
-
+//define of full access
 #define FULL_ACCESS 0777
 
 #define LONG_OPTS "ifv"
 
 typedef struct option OPT;
 
+//Array of possible options
 OPT options[] =
 {
 	{"force", 0, NULL, 'f'},
@@ -24,6 +35,8 @@ OPT options[] =
 	{0, 0, 0, 0}
 };
 
+//Function to realize -v param
+//Just print file destination
 void verbose(char* path_from, char* path_to)
 {
 	mywrite(1, "'", sizeof("'"));
@@ -33,6 +46,56 @@ void verbose(char* path_from, char* path_to)
 	mywrite(1, "'\n", sizeof("'\n"));
 }
 
+//Function to realize -i param
+//Ask you about do you want to rewrite file
+int interactive(char* path_to)
+{
+	open(path_to, O_WRONLY|O_CREAT|O_EXCL, FULL_ACCESS);
+	if(errno == EEXIST)
+	{
+		mywrite(1, "cp: overwrite '",sizeof("cp: overwrite '"));
+		mywrite(1, path_to, strlen(path_to));
+		mywrite(1, "'? ", sizeof("'? "));
+		char c = 0;
+		while((c = getchar()) == '\n')
+			fflush(stdin);
+		if(c == 'Y' || c == 'y')
+		{
+			return 0;
+		}
+		return 1;
+	}
+	return 0;
+}
+
+//Function to realize -f param
+//Try to write in file, when you
+//can not interact with it
+int force(char* path_to)
+{
+	if(open(path_to, O_WRONLY|O_CREAT|O_EXCL, FULL_ACCESS) < 0)
+		if(errno == EEXIST)
+		{
+			if(open(path_to, O_WRONLY, FULL_ACCESS) < 0)
+			{
+				if(remove(path_to) < 0)
+				{
+					perror("Unsuccessful remove");
+					return -1;
+				}
+				if(open(path_to, O_WRONLY|O_CREAT, FULL_ACCESS) < 0)
+				{
+					perror("Fail with force");
+					return -1;
+				}
+			}
+			return 0;
+		}
+	return 0;
+}
+
+//Function to check options and set flag
+//We check argv with n = argc params
 int get_opt(int argc, char **argv)
 {
 	int flag = 0;
@@ -62,6 +125,8 @@ int get_opt(int argc, char **argv)
 	return -1;
 }
 
+//Function that check
+//is "path" a directory
 int dir_check(char* path)
 {
 	if(path[strlen(path) - 1] == '/')
@@ -69,6 +134,8 @@ int dir_check(char* path)
 	return 0;
 }
 
+//Function that count number of files
+//from argv with n = argc params
 int file_check(int argc, char **argv)
 {
 	int n_files = 0;
@@ -80,39 +147,28 @@ int file_check(int argc, char **argv)
 	return n_files;
 }
 
-int interactive(int options, char* path_to)
+//Function that copy file from "path_from" to "path_to"
+//"path_to" can be only a file
+//"options" is a flag of possible options
+int file_copy(int options, char* path_from, char* path_to)
 {
-	int fd_test = open(path_to, O_WRONLY|O_CREAT|O_EXCL, FULL_ACCESS);
-	if(errno == EEXIST)
-	{
-		mywrite(1, "cp: overwrite '",sizeof("cp: overwrite '"));
-		mywrite(1, path_to, strlen(path_to));
-		mywrite(1, "'? ", sizeof("'\n"));
-		char c = getchar();
-		if(c == 'Y' || c == 'y')
-			return 0;
-		return 1;
-	}
-	close(fd_test);
-	return 0;
-}
-
-int file_copy(int options, char* path_from, char* path_to, int mode)
-{
-	if(options & I_OPT)
-		if(interactive(options, path_to))
-			return 0;
 	int fd_from = open(path_from, O_RDONLY);
 	if(fd_from < 0)
 	{
 		perror("File path");
 		return -1;
 	}
-	int fd_to;
-	if(mode == FILES_MODE)
-		fd_to = open(path_to, O_WRONLY, FULL_ACCESS);
-	if(mode == DIR_MODE)
-		fd_to = open(path_to, O_WRONLY|O_CREAT|O_TRUNC, FULL_ACCESS);
+	if(options & I_OPT)
+	{
+		if(interactive(path_to))
+			return -1;
+	}
+	if(options & F_OPT)
+	{
+		if(force(path_to))
+			return -1;
+	}
+	int fd_to = open(path_to, O_WRONLY|O_CREAT|O_TRUNC, FULL_ACCESS);
 	if(fd_to < 0)
 	{
 		perror("Where to copy error");
@@ -132,29 +188,60 @@ int file_copy(int options, char* path_from, char* path_to, int mode)
 	return 0;
 }
 
-int dir_copy(int options, int argc, char** argv, int opt_offset)
+//Function that get file name from "file_path"
+//If we have file path like "file1"
+//it will return "file_path" away
+//If we have file path like "./file1" or "/file1"
+//it will return "file_name" that will be "file"
+char* get_filename(char* file_path)
+{
+	char* file_name = strrchr(file_path, '/');
+	if(file_name == NULL)
+		return file_path;
+	return file_name;
+}
+
+//Function that calls when we need to copy N files to a directory
+//It calls to cat dest name and file name
+//f.e. "dir_name" = test/
+//f.e. "file" = file1
+//f.e. we will get "dir_name" = test/file1
+int dir_copy(int options, int argc, char** argv)
 {
 	int dir_offset = strlen(argv[argc-1]);
-	for (int i = opt_offset + 1; i < argc - 1; i++)
+	char* dir_name = argv[argc-1];
+	for (int i = optind; i < argc - 1; i++)
 	{
-		argv[argc-1] = strcat(argv[argc-1], strrchr(argv[i], '/') + 1);
-		file_copy(options, argv[i], argv[argc-1], DIR_MODE);
-		argv[argc-1][dir_offset] = '\0';
+		dir_name = strcat(dir_name, get_filename(argv[i]));
+		file_copy(options, argv[i], dir_name);
+		dir_name[dir_offset] = '\0';
 	}
 	return 0;
 }
 
 int main(int argc, char **argv)
 {
+	//we get number of options in "options"
 	const int options = get_opt(argc, argv);
 	if(options < 0)
 		return -1;
+	//check argv[argc-1] is dir or not
 	int dir_stat = dir_check(argv[argc-1]);
+	//count number of files
 	int n_files = file_check(argc, argv);
-	int param_offset = (options & I_OPT)/I_OPT + (options & V_OPT)/V_OPT + (options & F_OPT)/F_OPT;
-	if(dir_stat)
-		dir_copy(options, argc, argv, param_offset);
-	if(!dir_stat && n_files)
-		file_copy(options, argv[param_offset + 1], argv[param_offset + 2], FILES_MODE);
+	printf("%d\n", optind);
+	//choose mode that we will use
+	if(dir_stat)//copy to dir mode
+	{
+		dir_copy(options, argc, argv);
+	} else if(!dir_stat && n_files)//copy file2file
+	{
+		file_copy(options, argv[optind], argv[optind + 1]);
+	}
+	else//didn't find dir or file
+	{
+		perror("No such mode");
+		return -1;
+	}
 	return 0;
 }
