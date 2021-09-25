@@ -1,0 +1,3 @@
+CFLAGS=-Wall
+all:
+	gcc $(CFLAGS) ../mycat/mycat.c mycp.c -o mycp

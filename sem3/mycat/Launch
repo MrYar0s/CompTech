@@ -1,0 +1,3 @@
+CFLAGS=-Wall
+all:
+	gcc $(CFLAGS) mycat.c main.c -o mycat

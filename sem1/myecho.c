@@ -3,11 +3,11 @@
 
 int main(int argc, char* argv[])
 {
-	int nl = 1;
+	int param_n = 0;
 	int i = 1;
 	if(argc > 1 && !strcmp(argv[1],"-n"))
 	{
-		nl = 0;
+		param_n = 1;
 		i = 2;
 	}
 	while(i < argc)
@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 		if(i != argc)
 			printf(" ");
 	}
-	if(nl)
+	if(!param_n)
 		printf("\n");
 	return 0;
 }
