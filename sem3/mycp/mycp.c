@@ -229,7 +229,6 @@ int main(int argc, char **argv)
 	int dir_stat = dir_check(argv[argc-1]);
 	//count number of files
 	int n_files = file_check(argc, argv);
-	printf("%d\n", optind);
 	//choose mode that we will use
 	if(dir_stat)//copy to dir mode
 	{
