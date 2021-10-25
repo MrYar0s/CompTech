@@ -131,7 +131,10 @@ void getinfo(char* path, int options)
 	}
 	struct dirent* file;
 	struct stat info;
-	while(file = readdir(direct))
+
+	char* argv[MAX_SIZE];
+	int i = 0;
+	while((file = readdir(direct)))
 	{
 		char* real_path = concat(path, file->d_name);
 		if(stat(real_path, &info) == -1)
@@ -142,15 +145,32 @@ void getinfo(char* path, int options)
 		printinfo(file, &info, options);
 		if(options & R_OPT)
 		{
-			if((info.st_mode & S_IFDIR)
+			if((file->d_type == DT_DIR)
 			    && strcmp(file->d_name, "..")
 			    && strcmp(file->d_name, "."))
 			{
-				getinfo(real_path, options);
+				argv[i] = (char*)malloc(MAX_SIZE);
+				strcpy(argv[i], real_path);
+				i++;
 			}
 		}
+		free(real_path);
 	}
-	printf("\n");
+	printf("\n\n");
+	if(options & R_OPT)
+	{
+		for(int j = 0; j < i; j++)
+		{
+			getinfo(argv[j], options);
+		}
+	}
+	if(options & R_OPT)
+	{
+		for(int j = 0; j < i; j++)
+		{
+			free(argv[j]);
+		}
+	}
 	closedir(direct);
 }
 
