@@ -15,33 +15,32 @@
 struct msgbuf
 {
 	long type;
-
-	int text[1];
+	long text;
 };
 
 typedef struct msgbuf Message;
 
-int rcv(int key_id, Message msg)
+int rcv(int key_id, Message* msg)
 {
-	TRY(msgrcv(key_id, &msg, sizeof(msg), 1, 0));
-	return msg.text[0];
+	TRY(msgrcv(key_id, msg, sizeof(*msg), 1, 0));
+	return msg->text;
 }
 
-void snd(int key_id, Message msg)
+void snd(int key_id, Message* msg)
 {
-	TRY(msgsnd(key_id, &msg, sizeof(msg), 0));
+	TRY(msgsnd(key_id, msg, sizeof(*msg), 0));
 }
 
 void take(int q_vint, int q_bolt, int n_vint, int n_bolt)
 {
-	Message msg;
+	Message msg = {1, 0};
 	for(int i = 0; i < n_vint; i++)
 	{
-		snd(q_vint, msg);
+		snd(q_vint, &msg);
 	}
 	for(int i = 0; i < n_bolt; i++)
 	{
-		snd(q_bolt, msg);
+		snd(q_bolt, &msg);
 	}
 }
 
@@ -49,21 +48,20 @@ void vint(int q_vint, int q_bolt, int q_tiski, int n_vint, int n_bolt, int n_det
 {
 	for(int i = 0; i < n_details; i++)
 	{
-		Message msg;
-		rcv(q_vint, msg);
+		Message msg = {1, 0};
+		rcv(q_vint, &msg);
 		printf("Vintovik ready\n");
-		int result = rcv(q_tiski, msg);
+		int result = rcv(q_tiski, &msg);
 		result++;
 		printf("Vstavil vint, otoshel %d\n", result);
-		msg.type = 1;
-		msg.text[0] = result;
+		msg.text = result;
 		if(result == n_vint+n_bolt)
 		{
 			take(q_vint, q_bolt, n_vint, n_bolt);
 			printf("Detaile was produced\n");
-			msg.text[0] = 0;
+			msg.text = 0;
 		}
-		snd(q_tiski, msg);
+		snd(q_tiski, &msg);
 	}
 }
 
@@ -71,21 +69,20 @@ void bolt(int q_vint, int q_bolt, int q_tiski, int n_vint, int n_bolt, int n_det
 {
 	for(int i = 0; i < n_details; i++)
 	{
-		Message msg;
-		rcv(q_bolt, msg);
+		Message msg = {1, 0};
+		rcv(q_bolt, &msg);
 		printf("Boltovik ready\n");
-		int result = rcv(q_tiski, msg);
+		int result = rcv(q_tiski, &msg);
 		result++;
 		printf("Vstavil bolt, otoshel %d\n", result);
-		msg.type = 1;
-		msg.text[0] = result;
+		msg.text = result;
 		if(result == n_vint+n_bolt)
 		{
 			take(q_vint, q_bolt, n_vint, n_bolt);
 			printf("Detaile was produced\n");
-			msg.text[0] = 0;
+			msg.text = 0;
 		}
-		snd(q_tiski, msg);
+		snd(q_tiski, &msg);
 	}
 }
 
@@ -105,8 +102,8 @@ int main(int argc, char** argv)
 	int q_tiski = msgget(IPC_PRIVATE, FULL_ACCESS);
 
 	int status;
-	Message msg = {1, {0}};
-	snd(q_tiski, msg);
+	Message msg = {1, 0};
+	snd(q_tiski, &msg);
 	take(q_vint, q_bolt, num_of_vint, num_of_bolt);
 	for(int i = 0; i < num_of_vint; i++)
 	{
