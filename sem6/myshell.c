@@ -22,8 +22,11 @@ char* readline()
 	{
 		if(feof(stdin))
 		{
+			free(line);
+			printf("\n");
 			exit(0);
 		}
+		free(line);
 		perror("Getline error");
 		exit(1);
 	}
@@ -32,10 +35,13 @@ char* readline()
 		if(line[i] == '\n')
 		{
 			line[i] = '\0';
+			break;
 		}
 	}
-	if(!strcmp(line, "exit"))
+	if(!strcmp(line,"exit"))
 	{
+		free(line);
+		printf("\n");
 		exit(0);
 	}
 	return line;
@@ -44,38 +50,30 @@ char* readline()
 size_t cmdcount(char* line)
 {
 	char* start;
+	start = line;
 	size_t n_cmd = 1;
-	while(start = strrchr(line, '|'))
+	while(start = strchr(start, '|'))
 	{
-		line[(start-line)] = ',';
+		start++;
 		n_cmd++;
 	}
 	return n_cmd;
 }
 
+//DEBUG
+
 char** cmdparse(char* line, size_t n_cmd)
 {
-	char** cmd = (char**)malloc(n_cmd*sizeof(char*));
-	char* mod_line = (char*)malloc(strlen(line) + 1);
-	strcpy(mod_line, line);
-	char* start = mod_line;
-	for (size_t i = 0; i < n_cmd; ++i)
+	char** cmd = (char**)malloc(n_cmd*sizeof(cmd[0]));
+	cmd[0] = line;
+	size_t cur_pos = 1;
+	char* cur_ptr = strchr(line, '|');
+	while (cur_ptr)
 	{
-		char* end = strchr(mod_line, ',');
-		if(i != n_cmd - 1)
-		{
-			mod_line[(end - mod_line)] = '\0';
-		}
-		if(i)
-		{
-			start = strrchr(mod_line, '|') + 1;
-		}
-		cmd[i] = (char*)malloc(strlen(start) + 1);
-		strcpy(cmd[i], start);
-		if(i != n_cmd - 1)
-		{
-			mod_line[(end - mod_line)] = '|';
-		}
+		cmd[cur_pos++] = cur_ptr + 1;
+		*cur_ptr = 0;
+		line = cur_ptr + 1;
+		cur_ptr = strchr(line, '|');
 	}
 	return cmd;
 }
@@ -90,7 +88,10 @@ char** splitcmd(char* cmd)
 		splitted[i++] = (char*)malloc(MAX_SIZE);
 		strcpy(splitted[i-1], del);
 		del = strtok(NULL, " ");
+		printf("#%s#", splitted[i-1]);
 	}
+	splitted[i++] = (char*)malloc(MAX_SIZE);
+	splitted[i-1] = NULL;
 	return splitted;
 }
 
@@ -124,7 +125,6 @@ int main()
 				}
 				close(fd[0]);
 				execvp(splitted[0], splitted);
-				free(splitted);
 				perror("Error with exec");
 				return -1;
 			} else if(id > 0)

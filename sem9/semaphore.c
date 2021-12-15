@@ -4,6 +4,7 @@
 #include <sys/sem.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #define FULL_ACCESS 0777
 
@@ -15,7 +16,7 @@ enum semaphors
 	NUM_ON_COAST,
 	START_OF_TRIP,
 	END_OF_TRIP,
-	LAST_TRIP
+	LAST_TRIP,
 };
 
 const int sems_num = 7;
@@ -48,99 +49,80 @@ void Z(int sem_id, enum semaphors sem_num)
 
 void Passenger(int sem_id, int ind)
 {
-	int ride = 0;
+	Z(sem_id, STAIR_DOWN);
 
-	while(1)
-	{
-		Z(sem_id, STAIR_DOWN);
+	printf("Passenger number %d is ready\n", ind);
 
-		if(semctl(sem_id, LAST_TRIP, GETVAL))
-		{
-			break;
-		}
+	P(sem_id, NUM_ON_COAST, 1);
 
-		printf("Passenger number %d is ready\n", ind);
-
-		P(sem_id, NUM_ON_BOAT, 1);
-
-		if(semctl(sem_id, LAST_TRIP, GETVAL))
-		{
-			break;
-		}
-	
-		P(sem_id, NUM_ON_STAIR, 1);
-		printf("Passenger number %d stepped on the stair\n", ind);
-		sleep(1);
-		V(sem_id, NUM_ON_STAIR, 1);
-		printf("Passenger number %d on the boat\n", ind);
-
-		Z(sem_id, START_OF_TRIP);
-		Z(sem_id, END_OF_TRIP);
-
-		Z(sem_id, STAIR_DOWN);
-		P(sem_id, NUM_ON_STAIR, 1);
-		printf("Passenger number %d is going down\n", ind);
-		V(sem_id, NUM_ON_STAIR, 1);
-		sleep(1);
-		printf("Passenger number %d has gone down\n", ind);
-		V(sem_id, NUM_ON_BOAT, 1);
-		P(sem_id, NUM_ON_COAST, 1);
-		ride = 1;
-	}
-	if(ride)
-	{
-		printf("\033[0;32m");
-		printf("###Passenger %d was on the trip###\n", ind);
-		printf("\033[0m");
-	}
-	else
+	if(semctl(sem_id, LAST_TRIP, GETVAL))
 	{
 		printf("\033[0;31m");
-		printf("///Passenger %d was not on the trip///\n", ind);
-		printf("\033[0m");
+                printf("///Passenger %d was not on the trip///\n", ind);
+                printf("\033[0m");
+		V(sem_id, NUM_ON_COAST, 1);
+		exit(0);
 	}
+
+	P(sem_id, NUM_ON_STAIR, 1);
+	printf("Passenger number %d stepped on the stair\n", ind);
+	sleep(1);
+	printf("Passenger number %d on the boat\n", ind);
+	V(sem_id, NUM_ON_STAIR, 1);
+
+	P(sem_id, NUM_ON_BOAT, 1);
+
+	Z(sem_id, START_OF_TRIP);
+	Z(sem_id, END_OF_TRIP);
+
+	Z(sem_id, STAIR_DOWN);
+
+	P(sem_id, NUM_ON_STAIR, 1);
+	printf("Passenger number %d is going down\n", ind);
+	sleep(1);
+	printf("Passenger number %d has gone down\n", ind);
+	V(sem_id, NUM_ON_STAIR, 1);
+
+	P(sem_id, NUM_ON_BOAT, 1);
+
+	printf("\033[0;32m");
+	printf("###Passenger %d was on the trip###\n", ind);
+	printf("\033[0m");
 }
 
 void Captain(int sem_id, int num_trips, int size_stair, int size_boat)
 {
 	P(sem_id, STAIR_DOWN, 1);
-	P(sem_id, START_OF_TRIP, 1);
-
+	printf("Stair was downed, go on the boat\n");
 	for(int i = 0; i < num_trips; ++i)
 	{
-		if(i == num_trips - 1)
-		{
-			V(sem_id, LAST_TRIP, 1);
-		}
-
-		printf("Stair was downed, go on the boat\n");
-
 		Z(sem_id, NUM_ON_BOAT);
+		V(sem_id, NUM_ON_BOAT, size_boat);
 
 		V(sem_id, STAIR_DOWN, 1);
-		
-		P(sem_id, NUM_ON_STAIR, size_stair);
-		V(sem_id, NUM_ON_STAIR, size_stair);
 
+		P(sem_id, START_OF_TRIP, 1);
 		printf("###START###\n");
-		V(sem_id, START_OF_TRIP, 1);
 		sleep(5);
+		V(sem_id, START_OF_TRIP, 1);
 		P(sem_id, END_OF_TRIP, 1);
 		printf("###END###\n");
 
 		P(sem_id, STAIR_DOWN, 1);
-		Z(sem_id, NUM_ON_COAST);
+		Z(sem_id, NUM_ON_BOAT);
+		V(sem_id, NUM_ON_BOAT, size_boat);
+		if(i == num_trips - 1)
+                {
+                        V(sem_id, LAST_TRIP, 1);
+                        break;
+                }
 		printf("Another group!\n");
 		V(sem_id, END_OF_TRIP, 1);
 		V(sem_id, NUM_ON_COAST, size_boat);
+		printf("Stair was downed, go on the boat\n");
 
-		if(i == num_trips - 1)
-		{
-			break;
-		}
-
-		P(sem_id, START_OF_TRIP, 1);
 	}
+	V(sem_id, NUM_ON_COAST, size_boat);
 	printf("Captain goes home\n");
 }
 
@@ -206,6 +188,12 @@ int main(int argc, char** argv)
 			Passenger(sem_id, i + 1);
 			return 0;
 		}
+	}
+	
+	int status;
+	for(int i = 0; i < num_pass + 1; i++)
+	{
+		wait(&status);
 	}
 
 	return 0;

@@ -123,6 +123,7 @@ int myexec(int argc, char *argv[], int flag)
 
 	if(id == 0)
 	{
+		close(fd[0]);
 		if(dup2(fd[1], 1) < 0)
 		{
 			perror("Dup error");
@@ -137,7 +138,8 @@ int myexec(int argc, char *argv[], int flag)
 	if(id > 0)
 	{
 		close(fd[1]);
-		count(fd[0], flag);
+		dup2(fd[0], 0);
+		count(0, flag);
 		close(fd[0]);
 	
 		if(wait(&status) < 0)

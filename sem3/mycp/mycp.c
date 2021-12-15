@@ -178,8 +178,6 @@ int file_copy(int options, char* path_from, char* path_to)
 		verbose(path_from, path_to);
 	if(mycopy(fd_from, fd_to) < 0)
 	{
-		close(fd_from);
-		close(fd_to);
 		perror("Copy error");
 		return -1;
 	}

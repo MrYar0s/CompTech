@@ -36,7 +36,6 @@ OPT options[] =
 char* concat(char* path, char* name)
 {
 	char* real_path = (char*)malloc(sizeof(path) + sizeof(name) + 1);
-	real_path[0] = '\0';
 	strcat(real_path, path);
 	strcat(real_path, "/");
 	strcat(real_path, name);
@@ -134,6 +133,7 @@ void getinfo(char* path, int options)
 
 	char* argv[MAX_SIZE];
 	int i = 0;
+
 	while((file = readdir(direct)))
 	{
 		char* real_path = concat(path, file->d_name);
@@ -149,7 +149,7 @@ void getinfo(char* path, int options)
 			    && strcmp(file->d_name, "..")
 			    && strcmp(file->d_name, "."))
 			{
-				argv[i] = (char*)malloc(MAX_SIZE);
+				argv[i] = (char*)malloc(sizeof(real_path));
 				strcpy(argv[i], real_path);
 				i++;
 			}
@@ -162,12 +162,6 @@ void getinfo(char* path, int options)
 		for(int j = 0; j < i; j++)
 		{
 			getinfo(argv[j], options);
-		}
-	}
-	if(options & R_OPT)
-	{
-		for(int j = 0; j < i; j++)
-		{
 			free(argv[j]);
 		}
 	}

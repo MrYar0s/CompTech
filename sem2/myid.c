@@ -40,6 +40,10 @@ int process_init(struct process* user)
 		return 3;
 	}
 	user->ngroups = 0;
+	free(user->proc_name);
+	free(user->group_name);
+	free(user->grouplist);
+	free(user);
 	return 0;
 }
 
