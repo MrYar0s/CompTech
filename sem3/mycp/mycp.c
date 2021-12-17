@@ -5,6 +5,7 @@
 //////////////////////////////////
 #include <getopt.h>
 #include <errno.h>
+#include <dirent.h>
 
 //at this .h file defined functions
 //like mywrite and myread;
@@ -129,8 +130,15 @@ int get_opt(int argc, char **argv)
 //is "path" a directory
 int dir_check(char* path)
 {
-	if(path[strlen(path) - 1] == '/')
+	DIR* dir = opendir(path);
+	if(dir)
+	{
+		closedir(dir);
 		return 1;
+	} else if(errno == ENOENT)
+	{
+		return 0;
+	}
 	return 0;
 }
 
@@ -199,18 +207,32 @@ char* get_filename(char* file_path)
 	return file_name;
 }
 
-//Function that calls when we need to copy N files to a directory
-//It calls to cat dest name and file name
-//f.e. "dir_name" = test/
+//Function that makes path for new file
+//f.e. "dir_name" = test
 //f.e. "file" = file1
 //f.e. we will get "dir_name" = test/file1
+//f.e. "dir_name" = test/
+//f.e. "file" = file1
+//f.e. "dir_name" = test/file1
+char* concat(char* dir_name, char* file_name)
+{
+	if(dir_name[strlen(dir_name) - 1] != '/')
+	{
+		dir_name = strcat(dir_name, "/");
+	}
+	dir_name = strcat(dir_name, file_name);
+	return dir_name;
+}
+
+//Function that calls when we need to copy N files to a directory
+//It calls to cat dest name and file name
 int dir_copy(int options, int argc, char** argv)
 {
 	int dir_offset = strlen(argv[argc-1]);
 	char* dir_name = argv[argc-1];
 	for (int i = optind; i < argc - 1; i++)
 	{
-		dir_name = strcat(dir_name, get_filename(argv[i]));
+		dir_name = concat(dir_name, get_filename(argv[i]));
 		file_copy(options, argv[i], dir_name);
 		dir_name[dir_offset] = '\0';
 	}

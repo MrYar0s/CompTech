@@ -28,7 +28,7 @@ char* readline()
 		}
 		free(line);
 		perror("Getline error");
-		exit(1);
+		exit(0);
 	}
 	for (size_t i = 0; i < len; ++i)
 	{
@@ -60,8 +60,6 @@ size_t cmdcount(char* line)
 	return n_cmd;
 }
 
-//DEBUG
-
 char** cmdparse(char* line, size_t n_cmd)
 {
 	char** cmd = (char**)malloc(n_cmd*sizeof(cmd[0]));
@@ -88,7 +86,6 @@ char** splitcmd(char* cmd)
 		splitted[i++] = (char*)malloc(MAX_SIZE);
 		strcpy(splitted[i-1], del);
 		del = strtok(NULL, " ");
-		printf("#%s#", splitted[i-1]);
 	}
 	splitted[i++] = (char*)malloc(MAX_SIZE);
 	splitted[i-1] = NULL;

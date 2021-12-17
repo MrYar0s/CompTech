@@ -195,6 +195,7 @@ int main(int argc, char** argv)
 	{
 		wait(&status);
 	}
-
+	
+	semctl(sem_id, sems_num, IPC_RMID);
 	return 0;
 }
